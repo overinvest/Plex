@@ -170,6 +170,7 @@ namespace Project {
 			this->picture->TabStop = false;
 			this->picture->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::pict_MouseDown);
 			this->picture->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::pict_MouseMove);
+			this->picture->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::picture_MouseUp);
 			// 
 			// GridDots
 			// 
@@ -527,6 +528,7 @@ namespace Project {
 		SolidBrush^ Brush;
 		int DotName = -1;
 		int COLOR = -16777216;
+		int m_prevX, m_prevY;
 		System::Void MyForm_Load(System::Object^ sender, System::EventArgs^ e) {
 			Image = gcnew Bitmap(picture->Width, picture->Height);
 			g = Graphics::FromImage(Image);
@@ -570,10 +572,10 @@ namespace Project {
 			return TranslateTo26(++DotName);
 		}
 		System::Void pict_MouseDown(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
+			int X = e->X;
+			int Y = e->Y;
 			if (e->Button == System::Windows::Forms::MouseButtons::Left) {
 				Image = gcnew Bitmap(picture->Image);
-				int X = e->X;
-				int Y = e->Y;
 				std::string name = GenerateNewName();
 
 				Dots.push_back(new TPoint(X, Y, name));
@@ -583,7 +585,8 @@ namespace Project {
 				DrawDots();
 			}
 			else if (e->Button == System::Windows::Forms::MouseButtons::Right) {
-				
+				m_prevX = X;
+				m_prevY = Y;
 			}
 		}
 
@@ -777,7 +780,7 @@ namespace Project {
 		System::Void ColorButton_Click(System::Object^  sender, System::EventArgs^  e) {
 			if (colorDialog1->ShowDialog() == System::Windows::Forms::DialogResult::OK) {
 				COLOR = colorDialog1->Color.ToArgb();
-				MessageBox::Show(System::Convert::ToString(COLOR));
+				// MessageBox::Show(System::Convert::ToString(COLOR));
 				for (auto i : Dots) {
 					i->SetColor(COLOR);
 				}
@@ -850,6 +853,63 @@ namespace Project {
 
 		DrawLines();
 		DrawDots();
+	}
+
+	private: System::Void picture_MouseUp(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
+		if (e->Button == System::Windows::Forms::MouseButtons::Right) {
+			int X = e->X;
+			int Y = e->Y;
+
+			if (abs(m_prevX - X) > 1 || abs(m_prevY - Y) > 1) {
+				Image = gcnew Bitmap(picture->Image);
+
+				bool m_Dot1_exist = false;
+				int m_Dot1_idx = -1;
+
+				bool m_Dot2_exist = false;
+				int m_Dot2_idx = -1;
+
+				std::string name = "";
+				std::string name2 = "";
+
+				for (int i = 0; i < Dots.size(); i++) {
+					if (Dots[i]->IsFigure(m_prevX, m_prevY)) {
+						m_Dot1_exist = true;
+						m_Dot1_idx = i;
+						name = Dots[i]->GetName();
+					}
+				}
+
+				for (int i = 0; i < Dots.size(); i++) {
+					if (Dots[i]->IsFigure(X, Y)) {
+						m_Dot2_exist = true;
+						m_Dot2_idx = i;
+						name2 = Dots[i]->GetName();
+					}
+				}
+
+				if (!m_Dot1_exist) {
+					name = GenerateNewName();
+					Dots.push_back(new TPoint(m_prevX, m_prevY, name));
+					Dots.back()->SetColor(COLOR);
+				}
+
+				if (!m_Dot2_exist) {
+					name2 = GenerateNewName();
+					Dots.push_back(new TPoint(X, Y, name2));
+					Dots.back()->SetColor(COLOR);
+				}
+
+				int ind1 = FindNameInDots(name);
+				int ind2 = FindNameInDots(name2);
+
+				std::string NameLine = name + ' ' + name2;
+				Lines.push_back(new TLine(Dots[ind1], Dots[ind2]));
+				DrawDots();
+				DrawLines();
+				PrintLinesDataGrid();
+			}
+		}
 	}
 };
 }
